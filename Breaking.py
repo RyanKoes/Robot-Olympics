@@ -76,6 +76,7 @@ def get_note_name(freq):
             return note
     return "P"
 
+
 # Convert the original melody to note names
 melody = [
     "A4", "P", "B4", "P", "C5", "P", "A4", "P",
@@ -118,17 +119,53 @@ durations = [
     500, 167, 500, 167, 500, 1000
 ]
 
+minecraft = ["E4", "A5", "B5", "E5", "G5", "B6", "D6", "A7", 
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "A7",
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "G6",
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "G6",
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "G6",
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "G6",
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "G6",
+"E4", "A5", "B5", "E5", "G5", "B6", "D6", "G6"
+]
+
+
+minecraft_duration = [125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125,
+125, 125, 125, 125, 125, 125, 125, 125
+]
+
 def playtone(frequency):
     if frequency == 0:
         bequiet()
     else:
-        buzzer.duty_u16(1 << 14)
+        buzzer.duty_u16(1 << 10)
         buzzer.freq(frequency)
 
 def bequiet():
     buzzer.duty_u16(0)
 
-def play_melody():
+def play_mc():
+    for i in range(len(minecraft)):
+        note = minecraft[i]
+        duration = minecraft_duration[i]
+        
+        if note == "P":
+            bequiet()
+        else:
+            playtone(tones[note])
+        
+        # Add a small gap between notes (30% of the note duration)
+        pause = int(duration * 1.3)
+        sleep_ms(pause)
+        bequiet()
+
+def play_rickroll():
     for i in range(len(melody)):
         note = melody[i]
         duration = durations[i]
@@ -143,7 +180,6 @@ def play_melody():
         sleep_ms(pause)
         bequiet()
 
-# Play the melody
-while True:
-    play_melody()
-    sleep_ms(2000)  # Wait 2 seconds before repeating
+play_mc()
+sleep_ms(500)  
+play_rickroll()
