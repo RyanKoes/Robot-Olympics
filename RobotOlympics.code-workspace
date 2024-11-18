@@ -1,0 +1,20 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"name": "Arduino Scale",
+			"path": "../Documents/PlatformIO/Projects/Arduino Scale"
+		},
+		{
+			"name": "Motor",
+			"path": "../Documents/PlatformIO/Projects/Motor"
+		},
+		{
+			"name": "Temperature",
+			"path": "../Documents/PlatformIO/Projects/Temperature"
+		}
+	],
+	"settings": {}
+}
