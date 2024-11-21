@@ -1,53 +1,15 @@
-# from machine import Pin, PWM
-# import time
-
-# def play_frequencies_from_file(filename):
-#     # Initialize PWM on a pin (change pin number as needed)
-#     buzzer = PWM(Pin(22))  # Adjust pin number according to your setup
-    
-#     try:
-#         # Open and read the file
-#         with open(filename, 'r') as file:
-#             for line in file:
-#                 # Skip empty lines
-#                 if line.strip():
-#                     # Split time and frequency
-#                     duration, frequency = line.split('|')
-#                     # Convert to float and strip whitespace
-#                     duration = float(duration.strip())
-#                     frequency = float(frequency.strip())
-                    
-#                     if frequency > 0:
-#                         # Set frequency
-#                         buzzer.freq(int(frequency)//2)
-#                         # Set duty to 50%
-#                         buzzer.duty_u16(1 << 10)  # 50% of 65535
-#                         # Wait for the specified duration
-#                         time.sleep(duration)
-#                         # Turn off sound
-#                         buzzer.duty_u16(0)
-#                     else:
-#                         # If frequency is 0, just wait
-#                         time.sleep(duration)
-    
-#     except OSError as e:
-#         print("Error reading file:", e)
-#     except ValueError as e:
-#         print("Error parsing data:", e)
-#     finally:
-#         # Clean up
-#         buzzer.deinit()
-
-
-
-# # Play frequencies from the file
-# play_frequencies_from_file('frequencies.txt')
-
 from machine import Pin, PWM
 from time import sleep_ms
+import asyncio
 
 # Initialize buzzer on pin 22
 buzzer = PWM(Pin(22))
+
+# initliaze the sensor pins
+
+trigger = Pin(2, Pin.OUT)
+echo = Pin(3, Pin.IN)
+
 
 # Note frequencies mapping
 tones = {
@@ -179,7 +141,117 @@ def play_rickroll():
         pause = int(duration * 1.3)
         sleep_ms(pause)
         bequiet()
+class bot:
+    def __init__(self, **kwargs):
+        print(kwargs)
 
-play_mc()
-sleep_ms(500)  
-play_rickroll()
+        # Setup DC Motor pins
+        self.M1A = machine.PWM(machine.Pin(kwargs["M1A"]))
+        self.M1B = machine.PWM(machine.Pin(kwargs["M1B"]))
+        self.M2A = machine.PWM(machine.Pin(kwargs["M2A"]))
+        self.M2B = machine.PWM(machine.Pin(kwargs["M2B"]))
+        self.M1A.freq(50)
+        self.M1B.freq(50)
+        self.M2A.freq(50)
+        self.M2B.freq(50)
+
+        self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
+        self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
+
+
+    def rotate(self, speed=0.3):
+        self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M1B.duty_u16(int(speed * 65535))
+        self.M2A.duty_u16(int(speed * 65535))
+        self.M2B.duty_u16(0)
+
+    def turnleft(self, amount_u16 = 0x2000):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+        self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+        self.M1B.duty_u16(self.M1B.duty_u16())
+
+        if self.M2B.duty_u16() == 0:
+            # reverse
+            self.M2A.duty_u16(min(0xffff,self.M2A.duty_u16() + amount_u16))
+            self.M2B.duty_u16(0)
+        else:
+            # forward
+            self.M2A.duty_u16(self.M2A.duty_u16())
+            self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
+
+    def turnright(self, amount_u16 = 0x2000):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+
+        if self.M1B.duty_u16() == 0:
+            # reverse
+            self.M1A.duty_u16(min(0xffff,self.M1A.duty_u16() + amount_u16))
+            self.M1B.duty_u16(0)
+        else:
+            # forward
+            self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+            self.M1B.duty_u16(max(0,self.M1B.duty_u16() - amount_u16))
+
+        self.M2A.duty_u16(self.M2A.duty_u16())
+        self.M2B.duty_u16(self.M2B.duty_u16())
+
+    def fwd(self, speed=0.3):
+        self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M1B.duty_u16(int(speed * 65535))
+        self.M2A.duty_u16(0)
+        self.M2B.duty_u16(int(speed * 65535))
+
+    def reverse(self, speed=0.3):
+        self.M1A.duty_u16(int(speed * 65535))
+        self.M1B.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M2A.duty_u16(int(speed * 65535))
+        self.M2B.duty_u16(0)
+
+    def brake(self):
+        self.M1A.duty_u16(65535)     # Duty Cycle must be between 0 and 65535
+        self.M1B.duty_u16(65535)
+        self.M2A.duty_u16(65535)
+        self.M2B.duty_u16(65535)
+
+    def read_line(self):
+        return self.left.value(), self.right.value()
+
+conf = {
+    "M1A": 8,
+    "M1B": 9,
+    "M2A": 10,
+    "M2B": 11,
+    "left": 26,
+    "right": 27,
+}
+bot = bot(**conf)
+
+async def main():
+    # Perform Minecraft dance
+    play_mc()
+    bot.rotate(speed=0.2)  # Spin in place
+    await asyncio.sleep(2)  # Use await and asyncio.sleep for async delays
+    bot.fwd(speed=0.3)
+    await asyncio.sleep(2)
+    bot.turnleft(amount_u16=0x4000)
+    await asyncio.sleep(0.5)
+    bot.turnright(amount_u16=0x4000)
+    await asyncio.sleep(0.5)
+    bot.brake()
+
+    # Pause before Rickroll
+    await asyncio.sleep(0.5)
+
+    # Perform Rickroll dance
+    play_rickroll()
+    bot.reverse(speed=0.3)  # Reverse to the beat
+    await asyncio.sleep(2)
+    bot.rotate(speed=0.4)   # Spin
+    await asyncio.sleep(2)
+    bot.fwd(speed=0.5)
+    await asyncio.sleep(2)
+    bot.brake()
+
+# Start the event loop for the async function
+asyncio.run(main())
