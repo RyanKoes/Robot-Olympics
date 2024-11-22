@@ -1,5 +1,5 @@
 import machine
-import utime
+import time
 
 class bot:
     def __init__(self, **kwargs):
@@ -17,6 +17,8 @@ class bot:
 
         self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
+        
+        self.goToggle = machine.Pin(20, machine.Pin.IN)
 
 
     def rotate(self, speed=0.3):
@@ -24,6 +26,37 @@ class bot:
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
+
+    def turnleft(self, amount_u16 = 0x2000):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+        self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+        self.M1B.duty_u16(self.M1B.duty_u16())
+
+        if self.M2B.duty_u16() == 0:
+            # reverse
+            self.M2A.duty_u16(min(0xffff,self.M2A.duty_u16() + amount_u16))
+            self.M2B.duty_u16(0)
+        else:
+            # forward
+            self.M2A.duty_u16(self.M2A.duty_u16())
+            self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
+
+    def turnright(self, amount_u16 = 0x2000):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+
+        if self.M1B.duty_u16() == 0:
+            # reverse
+            self.M1A.duty_u16(min(0xffff,self.M1A.duty_u16() + amount_u16))
+            self.M1B.duty_u16(0)
+        else:
+            # forward
+            self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+            self.M1B.duty_u16(max(0,self.M1B.duty_u16() - amount_u16))
+
+        self.M2A.duty_u16(self.M2A.duty_u16())
+        self.M2B.duty_u16(self.M2B.duty_u16())
 
     def fwd(self, speed=0.3):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
@@ -45,29 +78,27 @@ class bot:
 
     def read_line(self):
         return self.left.value(), self.right.value()
-    
-# Create a bot object
+
 conf = {
     "M1A": 8,
     "M1B": 9,
     "M2A": 10,
-    "M2B": 11
+    "M2B": 11,
+    "left": 3,
+    "right": 2,
 }
 bot = bot(**conf)
 
 while True:
-    # Example motor control loop without distance sensor logic
-    bot.fwd()
-    print("Moving forward")
-    
-    utime.sleep(2)
+    left, right = bot.read_line()
 
-    bot.reverse()
-    print("Reversing")
-    
-    utime.sleep(2)
-    
-    bot.brake()
-    print("Stopped")
-    
-    utime.sleep(0.2)
+    if left == 0 and right == 0:
+        bot.fwd()
+    elif left == 1 and right == 0:
+        bot.turnleft()
+    elif left == 0 and right == 1:
+        bot.turnright()
+    elif left == 1 and right == 1:
+        bot.rotate()
+    else:
+        bot.fwd()
