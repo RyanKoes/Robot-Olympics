@@ -56,7 +56,7 @@ class bot:
         self.M2A.duty_u16(self.M2A.duty_u16())
         self.M2B.duty_u16(self.M2B.duty_u16())
 
-    def fwd(self, speed=0.4):
+    def fwd(self, speed=0.3):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
@@ -82,13 +82,14 @@ conf = {
     "M1B": 9,
     "M2A": 10,
     "M2B": 11,
-    "left": 2,
-    "right": 3,
+    "left": 3,
+    "right": 2,
 }
 bot = bot(**conf)
 
 while True:
     left, right = bot.read_line()
+    # bot.fwd()
 
     if left == 0 and right == 0:
         bot.fwd()
@@ -101,5 +102,9 @@ while True:
     else:
         bot.fwd()
 
-    print("Left: {}, Right: {}".format(left, right))
-    time.sleep(1)
+    # time.sleep(1)
+
+    off = Pin(20, Pin.OUT)
+    if off.value() == 1:
+        bot.brake()
+        break
