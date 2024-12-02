@@ -56,13 +56,13 @@ class bot:
         self.M2A.duty_u16(self.M2A.duty_u16())
         self.M2B.duty_u16(self.M2B.duty_u16())
 
-    def fwd(self, speed=1):
+    def fwd(self, speed=0.3):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
         self.M2B.duty_u16(int(speed * 65535))
 
-    def reverse(self, speed=0.3):
+    def reverse(self, speed=0.4):
         self.M1A.duty_u16(int(speed * 65535))
         self.M1B.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M2A.duty_u16(int(speed * 65535))
