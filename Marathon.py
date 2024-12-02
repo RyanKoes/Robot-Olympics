@@ -67,17 +67,20 @@ class Brain(FiniteStateMachine):
     def __init__(self):
         super().__init__()           
         self.current_state = 'Idle' 
+        # only turn right completely when there is no wall 
+        # else go straight and correct itself
         self.transitions = {
             'Idle': 
                 {'00':'Idle',     '01':'straight',      '10':'straight', '11':'straight'},
 
             'straight':
                 {'00':'no_wall',     '01':'straight',      '10':'straight', '11':'straight'},
-            'no_wall':
-                {'00':'right'},
             'right':
-                {'00':'no_wall',     '01':'straight',      '10':'straight', '11':'straight'},
-
+                {'00':'straight',     '01':'straight',      '10':'straight', '11':'straight'},
+            'left':
+                {'00':'no_wall',     '01':'right',      '10':'straight', '11':'straight'},
+            'no_wall':
+                {'00':'right',     '01':'le',      '10':'straight', '11':'straight'},
         }        
         
 
@@ -90,10 +93,11 @@ class Brain(FiniteStateMachine):
         # 'TL' -- Turn Left
         # ''   -- do nothing (its an empty text string)    
         self.outputs = {
-                'Idle':'',
-                'straight':'F',
-                'no_wall':'F',
-                'right':'TR',
+                'Idle': '',        # Do nothing when idle
+                'straight': 'F',   # Move forward
+                'right': 'TR',     # Turn right
+                'left': 'TL',      # Turn left
+                'no_wall': 'F',    # Move forward when no wall
 
         }
     

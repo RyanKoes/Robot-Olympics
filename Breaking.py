@@ -1,6 +1,7 @@
 from machine import Pin, PWM
 from time import sleep_ms
-import asyncio
+import uasyncio as asyncio
+
 
 # Initialize buzzer on pin 22
 buzzer = PWM(Pin(22))
@@ -112,22 +113,22 @@ def playtone(frequency):
 def bequiet():
     buzzer.duty_u16(0)
 
-def play_mc():
+async def play_mc():
     for i in range(len(minecraft)):
         note = minecraft[i]
         duration = minecraft_duration[i]
         
         if note == "P":
-            bequiet()
+            bequiet()  # Silence the buzzer
         else:
-            playtone(tones[note])
+            playtone(tones[note])  # Play the corresponding tone
         
         # Add a small gap between notes (30% of the note duration)
-        pause = int(duration * 1.3)
-        sleep_ms(pause)
-        bequiet()
+        pause = duration * 1.3 / 1000  # Convert ms to seconds for asyncio.sleep
+        await asyncio.sleep(pause)
+        bequiet() 
 
-def play_rickroll():
+async def play_rickroll():
     for i in range(len(melody)):
         note = melody[i]
         duration = durations[i]
@@ -138,9 +139,9 @@ def play_rickroll():
             playtone(tones[note])
         
         # Add a small gap between notes (30% of the note duration)
-        pause = int(duration * 1.3)
-        sleep_ms(pause)
-        bequiet()
+        pause = duration * 1.3 / 1000  # Convert ms to seconds for asyncio.sleep
+        await asyncio.sleep(pause)
+        bequiet() 
 class bot:
     def __init__(self, **kwargs):
         print(kwargs)
@@ -159,13 +160,23 @@ class bot:
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
 
 
-    def rotate(self, speed=0.3):
+    async def rotate_right(self, speed=0.3):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
+        await asyncio.sleep(1) # Asynchronous delay
+        self.brake()  
 
-    def turnleft(self, amount_u16 = 0x2000):
+    async def rotate_left(self, speed=0.3):
+        self.M1A.duty_u16(int(speed * 65535))
+        self.M1B.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M2A.duty_u16(0)
+        self.M2B.duty_u16(int(speed * 65535))
+        await asyncio.sleep(1) # Asynchronous delay
+        self.brake()  
+
+    async def turnleft(self, amount_u16 = 0x2000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
         self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
@@ -180,7 +191,7 @@ class bot:
             self.M2A.duty_u16(self.M2A.duty_u16())
             self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
 
-    def turnright(self, amount_u16 = 0x2000):
+    async def turnright(self, amount_u16 = 0x2000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
 
@@ -196,17 +207,21 @@ class bot:
         self.M2A.duty_u16(self.M2A.duty_u16())
         self.M2B.duty_u16(self.M2B.duty_u16())
 
-    def fwd(self, speed=0.3):
+    async def fwd(self, speed=0.3):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
         self.M2B.duty_u16(int(speed * 65535))
+        await asyncio.sleep(1) # Asynchronous delay
+        self.brake()
 
-    def reverse(self, speed=0.3):
+    async def reverse(self, speed=0.3):
         self.M1A.duty_u16(int(speed * 65535))
         self.M1B.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
+        await asyncio.sleep(1) # Asynchronous delay
+        self.brake()
 
     def brake(self):
         self.M1A.duty_u16(65535)     # Duty Cycle must be between 0 and 65535
@@ -225,33 +240,126 @@ conf = {
     "left": 26,
     "right": 27,
 }
+async def dance_mc():
+    # Spin left and right for a duration of 5 seconds
+    await bot.rotate_right(speed=0.5)  # Spin in place
+    await asyncio.sleep(.0001)  # Add delay between movements
+    await bot.rotate_left(speed=0.5)   # Spin in place
+    await asyncio.sleep(.0001)  # Add delay between movements
+    await bot.rotate_right(speed=0.5)  # Spin in place
+    await asyncio.sleep(.0001)
+    await bot.rotate_left(speed=0.5)   # Spin in place
+    await asyncio.sleep(.0001)
+    await bot.rotate_right(speed=0.5)  # Spin in place
+    await asyncio.sleep(.0001)
+    await bot.rotate_left(speed=0.5)   # Spin in place
+    await asyncio.sleep(.0001)  # Add delay between movements
+    await bot.rotate_right(speed=0.5)  # Spin in place
+    await asyncio.sleep(.0001)
+    await bot.rotate_left(speed=0.5)   # Spin in place
+    await asyncio.sleep(.0001)
+    await bot.rotate_right(speed=0.5)  # Spin in place
+    await asyncio.sleep(.0001)
+    await bot.rotate_left(speed=0.5)   # Spin in place
+    await asyncio.sleep(.0001)
+    bot.brake()  # Stop the motors
+
+async def check_boundary():
+    while True:
+        left, right = bot.read_line()
+        print(left, right)
+        if left == 1 and right == 1:
+            await bot.brake()
+            await bot.reverse()
+        await asyncio.sleep_ms(100)
+
+    
+
+async def dance_rickroll():
+    # Introduction: Move forward and backward rhythmically
+    await bot.fwd(speed=0.5)
+    await asyncio.sleep(0.25)  # Forward for 2 beats
+    bot.brake()
+    await asyncio.sleep(0.125)  # Pause for 1 beat
+    await bot.reverse(speed=0.5)
+    await asyncio.sleep(0.25)  # Backward for 2 beats
+    bot.brake()
+    await asyncio.sleep(0.125)  # Pause for 1 beat
+    await bot.rotate_right(speed=0.5)
+    await asyncio.sleep(0.25)  # Spin right for 2 beats
+    bot.brake()
+
+    # Verse 1: Zig-zag motion with slight turns
+    await bot.turnleft(0x2000)
+    await bot.fwd(speed=0.4)
+    await asyncio.sleep(0.25)  # Turn left and forward for 2 beats
+    bot.brake()
+    await bot.turnright(0x2000)
+    await bot.fwd(speed=0.4)
+    await asyncio.sleep(0.25)  # Turn right and forward for 2 beats
+    bot.brake()
+    await bot.rotate_left(speed=0.4)
+    await bot.reverse(speed=0.4)
+    await asyncio.sleep(0.5)  # Reverse with a spin to the left for 4 beats
+    bot.brake()
+    await asyncio.sleep(0.25)  # Pause for 2 beats
+
+    # Chorus 1: Full spins and rapid movements
+    await bot.rotate_right(speed=0.6)
+    await asyncio.sleep(0.5)  # Spin in place to the right for 4 beats
+    bot.brake()
+    await bot.fwd(speed=0.7)
+    await asyncio.sleep(0.25)  # Move forward quickly for 2 beats
+    bot.brake()
+    await bot.rotate_left(speed=0.6)
+    await asyncio.sleep(0.5)  # Spin in place to the left for 4 beats
+    bot.brake()
+    await bot.reverse(speed=0.7)
+    await asyncio.sleep(0.25)  # Reverse rapidly for 2 beats
+    bot.brake()
+    await asyncio.sleep(0.5)  # Pause for 4 beats
+
+    # Bridge: Sway with rhythmic stops
+    for _ in range(4):
+        await bot.fwd(speed=0.5)
+        await asyncio.sleep(0.125)  # Forward for 1 beat
+        bot.brake()
+        await asyncio.sleep(0.125)  # Pause for 1 beat
+        await bot.reverse(speed=0.5)
+        await asyncio.sleep(0.125)  # Reverse for 1 beat
+        bot.brake()
+        await asyncio.sleep(0.125)  # Pause for 1 beat
+
+    # Final Chorus: Zig-zag, spins, and dramatic finish
+    for _ in range(4):
+        await bot.turnleft(0x2000)
+        await asyncio.sleep(0.125)  # Turn left for 1 beat
+        await bot.turnright(0x2000)
+        await asyncio.sleep(0.125)  # Turn right for 1 beat
+        await bot.fwd(speed=0.5)
+        await asyncio.sleep(0.25)  # Move forward for 2 beats
+        bot.brake()
+
+    await bot.rotate_right(speed=0.7)
+    await asyncio.sleep(0.5)  # Spin right for 4 beats
+    bot.brake()
+    await bot.rotate_left(speed=0.7)
+    await asyncio.sleep(0.5)  # Spin left for 4 beats
+    bot.brake()
+
+    # Ending Pose: Stop and flash LED (if any)
+    bot.brake()
+    print("Dance complete! Ending pose.")
+    # Optionally, flash an LED or play the last note as the ending.
+
 bot = bot(**conf)
 
 async def main():
-    # Perform Minecraft dance
-    play_mc()
-    bot.rotate(speed=0.2)  # Spin in place
-    await asyncio.sleep(2)  # Use await and asyncio.sleep for async delays
-    bot.fwd(speed=0.3)
-    await asyncio.sleep(2)
-    bot.turnleft(amount_u16=0x4000)
-    await asyncio.sleep(0.5)
-    bot.turnright(amount_u16=0x4000)
-    await asyncio.sleep(0.5)
-    bot.brake()
-
-    # Pause before Rickroll
-    await asyncio.sleep(0.5)
-
-    # Perform Rickroll dance
-    play_rickroll()
-    bot.reverse(speed=0.3)  # Reverse to the beat
-    await asyncio.sleep(2)
-    bot.rotate(speed=0.4)   # Spin
-    await asyncio.sleep(2)
-    bot.fwd(speed=0.5)
-    await asyncio.sleep(2)
-    bot.brake()
-
+    # check for boundary
+    # await asyncio.gather(check_boundary())
+    # Perform Minecraft dance and play music concurrently
+    # await asyncio.gather(play_mc(), dance_mc())
+    # Perform Rickroll dance and play music concurrently
+    await asyncio.gather(play_rickroll(), dance_rickroll())
 # Start the event loop for the async function
 asyncio.run(main())
