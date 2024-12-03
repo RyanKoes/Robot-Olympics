@@ -18,7 +18,7 @@ class bot:
         self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
         
-        self.goToggle = machine.Pin(20, machine.Pin.IN)
+        self.A = machine.Pin(kwargs["A"], machine.Pin.IN)
 
 
     def rotate(self, speed=0.3):
@@ -27,7 +27,7 @@ class bot:
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
 
-    def turnleft(self, amount_u16 = 0x2000):
+    def turnleft(self, amount_u16 = 0x3000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
         self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
@@ -42,7 +42,7 @@ class bot:
             self.M2A.duty_u16(self.M2A.duty_u16())
             self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
 
-    def turnright(self, amount_u16 = 0x2000):
+    def turnright(self, amount_u16 = 0x3000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
 
@@ -58,7 +58,7 @@ class bot:
         self.M2A.duty_u16(self.M2A.duty_u16())
         self.M2B.duty_u16(self.M2B.duty_u16())
 
-    def fwd(self, speed=0.3):
+    def fwd(self, speed=0.4):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
@@ -86,19 +86,28 @@ conf = {
     "M2B": 11,
     "left": 3,
     "right": 2,
+    "A": 20,
 }
 bot = bot(**conf)
+state = 0
 
 while True:
-    left, right = bot.read_line()
+    # if bot.A.value() == 0:
+    #     state = 1
+    # if state != 0:
+        left, right = bot.read_line()
 
-    if left == 0 and right == 0:
-        bot.fwd()
-    elif left == 1 and right == 0:
-        bot.turnleft()
-    elif left == 0 and right == 1:
-        bot.turnright()
-    elif left == 1 and right == 1:
-        bot.rotate()
-    else:
-        bot.fwd()
+        if left == 0 and right == 0:
+            bot.fwd()
+            last_turn = None  # Reset the last turn direction
+        elif left == 1 and right == 0:
+            if last_turn != 'right':  # Only turn left if the last turn was not right
+                bot.turnleft()
+                last_turn = 'left'
+        elif left == 0 and right == 1:
+            if last_turn != 'left':  # Only turn right if the last turn was not left
+                bot.turnright()
+                last_turn = 'right'
+        elif left == 1 and right == 1:
+            bot.turnright()
+            last_turn = None  # Reset the last turn direction
