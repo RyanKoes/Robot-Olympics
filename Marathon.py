@@ -43,6 +43,39 @@ class bot:
         self.M2A.duty_u16(65535)
         self.M2B.duty_u16(65535)
 
+        
+    def turnleft(self, amount_u16 = 0x800):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+        self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+        self.M1B.duty_u16(self.M1B.duty_u16())
+
+        if self.M2B.duty_u16() == 0:
+            # reverse
+            self.M2A.duty_u16(min(0xffff,self.M2A.duty_u16() + amount_u16))
+            self.M2B.duty_u16(0)
+        else:
+            # forward
+            self.M2A.duty_u16(self.M2A.duty_u16())
+            self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
+
+    def turnright(self, amount_u16 = 0x800):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+
+        if self.M1B.duty_u16() == 0:
+            # reverse
+            self.M1A.duty_u16(min(0xffff,self.M1A.duty_u16() + amount_u16))
+            self.M1B.duty_u16(0)
+        else:
+            # forward
+            self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+            self.M1B.duty_u16(max(0,self.M1B.duty_u16() - amount_u16))
+
+        self.M2A.duty_u16(self.M2A.duty_u16())
+        self.M2B.duty_u16(self.M2B.duty_u16())
+
+
     def read_line(self):
         return self.left.value(), self.right.value()
     
@@ -67,20 +100,18 @@ class Brain(FiniteStateMachine):
     def __init__(self):
         super().__init__()           
         self.current_state = 'Idle' 
-        # only turn right completely when there is no wall 
-        # else go straight and correct itself
         self.transitions = {
             'Idle': 
                 {'00':'Idle',     '01':'straight',      '10':'straight', '11':'straight'},
 
             'straight':
-                {'00':'no_wall',     '01':'straight',      '10':'straight', '11':'straight'},
+                {'00':'right',     '01':'straight',      '10':'left', '11':'straight'},
             'right':
                 {'00':'straight',     '01':'straight',      '10':'straight', '11':'straight'},
             'left':
                 {'00':'no_wall',     '01':'right',      '10':'straight', '11':'straight'},
             'no_wall':
-                {'00':'right',     '01':'le',      '10':'straight', '11':'straight'},
+                {'00':'no_wall',     '01':'straight',      '10':'straight', '11':'straight'},
         }        
         
 
@@ -93,11 +124,10 @@ class Brain(FiniteStateMachine):
         # 'TL' -- Turn Left
         # ''   -- do nothing (its an empty text string)    
         self.outputs = {
-                'Idle': '',        # Do nothing when idle
-                'straight': 'F',   # Move forward
-                'right': 'TR',     # Turn right
-                'left': 'TL',      # Turn left
-                'no_wall': 'F',    # Move forward when no wall
+                'Idle':'',
+                'straight':'F',
+                'no_wall':'F',
+                'right':'TR',
 
         }
     
@@ -125,18 +155,33 @@ bot = bot(**conf)
 
 brain = Brain()  # Moved outside the loop
 
+# while True:
+#     # using the FSM to control the robot
+#     left, right = bot.read_line()
+#     Antenna = str(left) + str(right)
+    
+#     # Advance the FSM and get the action
+#     action = brain.advance(Antenna)  # Use the existing `brain` object
+#     print(action)
+    
+#     if action == 'F':
+#         bot.fwd()
+#     elif action == 'TR':
+#         bot.rotate()
+#     else:
+#         bot.brake()
+
 while True:
-    # using the FSM to control the robot
     left, right = bot.read_line()
-    Antenna = str(left) + str(right)
-    
-    # Advance the FSM and get the action
-    action = brain.advance(Antenna)  # Use the existing `brain` object
-    print(action)
-    
-    if action == 'F':
+    # bot.fwd()
+
+    if left == 0 and right == 0:
         bot.fwd()
-    elif action == 'TR':
-        bot.rotate()
-    else:
+    elif left == 1 and right == 0:
+        bot.turnleft()
+    elif left == 0 and right == 1:
+        bot.turnright()
+    elif left == 1 and right == 1:
         bot.brake()
+    else:
+        bot.fwd()
