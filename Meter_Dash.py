@@ -25,7 +25,7 @@ class bot:
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
 
-    def turnleft(self, amount_u16 = 0x800):
+    def turnleft(self, amount_u16 = 0x2000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
         self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
@@ -40,7 +40,7 @@ class bot:
             self.M2A.duty_u16(self.M2A.duty_u16())
             self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
 
-    def turnright(self, amount_u16 = 0x800):
+    def turnright(self, amount_u16 = 0x2000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
 
@@ -104,7 +104,7 @@ while True:
 
     # time.sleep(1)
 
-    # off = Pin(20, Pin.OUT)
-    # if off.value() == 1:
-    #     bot.brake()
-    #     break
+    off = Pin(20, Pin.OUT)
+    if off.value() == 1:
+        bot.brake()
+        break
