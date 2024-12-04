@@ -401,16 +401,17 @@ async def color_show():
 
 bot = bot(**conf)
 
-async def main():
-    # check for boundary
+# wait for the button to be pressed
+async def button_on_press():
+    while True:
+        if bot.A.value() == 0:
+            break
+        await asyncio.sleep_ms(100)
 
+
+async def main():
+    await button_on_press()
     # await asyncio.gather(dance_mc(), play_mc())
     await asyncio.gather(dance_rickroll(), play_rickroll(), color_show())
-
-    # Perform Minecraft dance and play music concurrently
-    # await asyncio.gather(play_mc(), dance_mc())
-    # Perform Rickroll dance and play music concurrently
-    # await led_on1(mc_light)
-    # await asyncio.gather( play_rickroll(),dance_rickroll())
 # Start the event loop for the async function
 asyncio.run(main())
