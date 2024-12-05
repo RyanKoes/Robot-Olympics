@@ -31,20 +31,20 @@ class bot:
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
-        self.M1B.duty_u16(int(0.3 * 65535))
-        self.M2A.duty_u16(0)
-        self.M2B.duty_u16(0)
+        self.M1B.duty_u16(int(0.35 * 65535)) #right wheel forward
+        self.M2A.duty_u16(int(0.3 * 65535)) #left wheel reverse int(0.5 * 65535)
+        self.M2B.duty_u16(int(0 * 65535))
 
     def turnright(self, amount_u16 = 0x1000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
 
-        self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
-        self.M1B.duty_u16(0)
+        self.M1A.duty_u16(int(0.3 * 65535))     # int(0.5 * 65535)
+        self.M1B.duty_u16(int(0 * 65535))
         self.M2A.duty_u16(0)
-        self.M2B.duty_u16(int(0.3 * 65535))
+        self.M2B.duty_u16(int(0.45 * 65535))
 
-    def fwd(self, speed=0.3):
+    def fwd(self, speed=0.4):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
@@ -85,8 +85,8 @@ while True:
 
     if left == 0 and right == 0:
         bot.fwd()
-        np[0] = (255, 0, 0)
-        np[1] = (255, 0, 0)
+        np[0] = (0, 0, 255)
+        np[1] = (0, 0, 255)
     elif left == 1 and right == 0:
         bot.turnleft()
         prev_turn = "left"
@@ -100,9 +100,13 @@ while True:
     elif left == 1 and right == 1:
         if prev_turn == "left":
             bot.turnleft()
+            np[0] = (255, 0, 0)  # Set the first LED to red
+            np[1] = (0, 0, 0)
             prev_turn = "left"
         elif prev_turn == "right":
             bot.turnright()
+            np[1] = (255, 0, 0)  # Set the first LED to red
+            np[0] = (0, 0, 0)
             prev_turn = "right"
         else:
             bot.brake()
