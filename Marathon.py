@@ -1,5 +1,8 @@
-import machine
-import utime
+from machine import Pin, PWM
+from time import sleep_ms
+import uasyncio as asyncio
+import neopixel
+
 
 class bot:
     def __init__(self, **kwargs):
@@ -17,6 +20,7 @@ class bot:
 
         self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
+        self.A = machine.Pin(kwargs["A"], machine.Pin.IN)
 
 
     def rotate(self, speed=0.3):
@@ -42,6 +46,17 @@ class bot:
         self.M1B.duty_u16(65535)
         self.M2A.duty_u16(65535)
         self.M2B.duty_u16(65535)
+
+    def rotate_right(self, speed=0.3):
+        self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M1B.duty_u16(int(speed * 65535))
+        self.M2A.duty_u16(int(speed * 65535))
+        self.M2B.duty_u16(0)
+    def rotate_left(self, speed=0.3):
+        self.M1A.duty_u16(int(speed * 65535))
+        self.M1B.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M2A.duty_u16(0)
+        self.M2B.duty_u16(int(speed * 65535))
 
         
     def turnleft(self, amount_u16 = 0x800):
@@ -150,6 +165,7 @@ conf = {
     "M2B": 11,
     "left": 3,
     "right": 2,
+     "A": 20,
 }
 bot = bot(**conf)
 
@@ -171,17 +187,47 @@ brain = Brain()  # Moved outside the loop
 #     else:
 #         bot.brake()
 
-while True:
-    left, right = bot.read_line()
-    # bot.fwd()
+# while True:
+#     left, right = bot.read_line()
+#     # bot.fwd()
 
-    if left == 0 and right == 0:
-        bot.fwd()
-    elif left == 1 and right == 0:
-        bot.turnleft()
-    elif left == 0 and right == 1:
-        bot.turnright()
-    elif left == 1 and right == 1:
-        bot.brake()
-    else:
-        bot.fwd()
+#     if left == 0 and right == 0:
+#         bot.fwd()
+#     elif left == 1 and right == 0:
+#         bot.turnleft()
+#     elif left == 0 and right == 1:
+#         bot.turnright()
+#     elif left == 1 and right == 1:
+#         bot.brake()
+#     else:
+#         bot.fwd()
+
+# wait for the button to be pressed
+async def button_on_press():
+    while True:
+        if bot.A.value() == 0:
+            break
+        await asyncio.sleep_ms(100)
+
+
+async def main():
+    await button_on_press()
+    while True:
+        left, right = bot.read_line()
+        # bot.fwd()
+
+        if left == 0 and right == 0:
+            bot.fwd()
+        elif left == 1 and right == 0:
+            bot.rotate_left()
+        elif left == 0 and right == 1:
+            bot.rotate_right()
+        elif left == 1 and right == 1:
+            bot.brake()
+        else:
+            bot.fwd()
+
+        await asyncio.sleep_ms(100)
+
+# call main
+asyncio.run(main())
