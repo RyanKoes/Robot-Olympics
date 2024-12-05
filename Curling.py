@@ -1,5 +1,6 @@
 import uasyncio as asyncio
 from machine import Pin, ADC, time_pulse_us
+import neopixel
 import utime
 
 
@@ -119,18 +120,21 @@ async def main():
     await button_on_press()
     stop = False
     start_time = utime.ticks_ms()
+    np = neopixel.NeoPixel(machine.Pin(18), 2)
     while True:
         left, right = bot.read_line()
         if utime.ticks_diff(utime.ticks_ms(), start_time) > 15000:
             distance = bot.read_distance()
             # print("Distance = ", distance, "cm")
-            if distance < 30:
+            if distance < 45:
                 stop = True
-            elif distance >= 30:
+            elif distance >= 45:
                 stop = False
 
         if stop:
             bot.brake()
+            np[0] = (0, 255, 0)
+            np[1] = (0, 255, 0)
         else:
             if left == 0 and right == 0:
                 bot.fwd()
@@ -140,6 +144,7 @@ async def main():
                 bot.turnright()
             elif left == 1 and right == 1:
                 bot.brake()
+        np.write()
         await asyncio.sleep_ms(100)
 
 # call main

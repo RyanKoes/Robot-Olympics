@@ -1,5 +1,7 @@
 import machine
 import time
+import uasyncio as asyncio
+import utime
 
 class bot:
     def __init__(self, **kwargs):
@@ -17,6 +19,11 @@ class bot:
 
         self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
+        
+        self.A = machine.Pin(kwargs["A"], machine.Pin.IN)
+        
+        self.trigPin = machine.Pin(kwargs["trigPin"], machine.Pin.OUT)
+        self.echoPin = machine.Pin(kwargs["echoPin"], machine.Pin.IN)
 
 
     def rotate(self, speed=0.3):
@@ -56,7 +63,7 @@ class bot:
         self.M2A.duty_u16(self.M2A.duty_u16())
         self.M2B.duty_u16(self.M2B.duty_u16())
 
-    def fwd(self, speed=1):
+    def fwd(self, speed=0.6):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
@@ -76,6 +83,16 @@ class bot:
 
     def read_line(self):
         return self.left.value(), self.right.value()
+    
+    def read_distance(self):
+        self.trigPin.low()
+        utime.sleep_us(2)
+        self.trigPin.high()
+        utime.sleep_us(5)
+        self.trigPin.low()
+        pulse = machine.time_pulse_us(self.echoPin, 1, 10000)
+        distance = 1 / 58.0 * pulse
+        return distance
 
 conf = {
     "M1A": 8,
@@ -84,27 +101,42 @@ conf = {
     "M2B": 11,
     "left": 3,
     "right": 2,
+    "A": 20,
+    "trigPin": 27,
+    "echoPin": 26,
 }
 bot = bot(**conf)
 
-while True:
-    left, right = bot.read_line()
-    # bot.fwd()
+async def button_on_press():
+    while True:
+        if bot.A.value() == 0:
+            break
+        await asyncio.sleep_ms(100)
 
-    if left == 0 and right == 0:
-        bot.fwd()
-    elif left == 1 and right == 0:
-        bot.turnleft()
-    elif left == 0 and right == 1:
-        bot.turnright()
-    elif left == 1 and right == 1:
-        bot.brake()
-    else:
-        bot.fwd()
-
-    # time.sleep(1)
-
-    off = Pin(20, Pin.OUT)
-    if off.value() == 1:
-        bot.brake()
-        break
+async def main():
+    await button_on_press()
+    stop = True
+    while True:
+        left, right = bot.read_line()
+        distance = bot.read_distance()
+        
+        if distance < 10:
+            stop = True
+        elif distance >= 10:
+            stop = False
+            
+        if stop:
+            bot.brake()
+        else:
+            if left == 0 and right == 0:
+                bot.fwd()
+            elif left == 1 and right == 0:
+                bot.turnleft()
+            elif left == 0 and right == 1:
+                    bot.turnright()
+            elif left == 1 and right == 1:
+                bot.brake()
+            
+        await asyncio.sleep_ms(10)
+        
+asyncio.run(main())
