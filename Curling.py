@@ -1,7 +1,7 @@
-import asyncio
-import math
+import uasyncio as asyncio
 from machine import Pin, ADC, time_pulse_us
-import time
+import utime
+
 
 import machine
 
@@ -21,6 +21,11 @@ class bot:
 
         self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
+        
+        self.A = machine.Pin(kwargs["A"], machine.Pin.IN)
+        
+        self.trigPin = machine.Pin(kwargs["trigPin"], machine.Pin.OUT)
+        self.echoPin = machine.Pin(kwargs["echoPin"], machine.Pin.IN)
 
 
     def rotate(self, speed=0.3):
@@ -28,8 +33,39 @@ class bot:
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
+        
+    def turnleft(self, amount_u16 = 0x3000):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+        self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+        self.M1B.duty_u16(self.M1B.duty_u16())
 
-    def fwd(self, speed=0.3):
+        if self.M2B.duty_u16() == 0:
+            # reverse
+            self.M2A.duty_u16(min(0xffff,self.M2A.duty_u16() + amount_u16))
+            self.M2B.duty_u16(0)
+        else:
+            # forward
+            self.M2A.duty_u16(self.M2A.duty_u16())
+            self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
+
+    def turnright(self, amount_u16 = 0x3000):
+        # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
+        # assumes we are going forward.
+
+        if self.M1B.duty_u16() == 0:
+            # reverse
+            self.M1A.duty_u16(min(0xffff,self.M1A.duty_u16() + amount_u16))
+            self.M1B.duty_u16(0)
+        else:
+            # forward
+            self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
+            self.M1B.duty_u16(max(0,self.M1B.duty_u16() - amount_u16))
+
+        self.M2A.duty_u16(self.M2A.duty_u16())
+        self.M2B.duty_u16(self.M2B.duty_u16())
+
+    def fwd(self, speed=0.4):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
@@ -49,35 +85,62 @@ class bot:
 
     def read_line(self):
         return self.left.value(), self.right.value()
+    
+    def read_distance(self):
+        self.trigPin.low()
+        utime.sleep_us(2)
+        self.trigPin.high()
+        utime.sleep_us(5)
+        self.trigPin.low()
+        pulse = machine.time_pulse_us(self.echoPin, 1, 10000)
+        distance = 1 / 58.0 * pulse
+        return distance
 
+conf = {
+        "M1A": 8,
+        "M1B": 9,
+        "M2A": 10,
+        "M2B": 11,
+        "left": 3,
+        "right": 2,
+        "A": 20,
+        "trigPin": 27,
+        "echoPin": 26,
+}
+bot = bot(**conf)
 
-trigPin = Pin(5, Pin.OUT)
-echoPin = Pin(4, Pin.IN)
-
-
-async def collect_sensors():
-    global red_led_period, yellow_led_period, green_led_period
+async def button_on_press():
     while True:
-        # Distance sensor
-        trigPin.off()
-        time.sleep_us(2)
-        trigPin.on()
-        time.sleep_us(10)
-        trigPin.off()
-        duration = time_pulse_us(echoPin, 1)
-        distance = (duration * 0.034) / 2
-
-        if distance > 500:
-            distance = 0
-            
-        print('Distance:', distance)
-
-        await asyncio.sleep_ms(500)
+        if bot.A.value() == 0:
+            break
+        await asyncio.sleep_ms(100)
 
 async def main():
+    await button_on_press()
+    stop = False
+    start_time = utime.ticks_ms()
+    while True:
+        left, right = bot.read_line()
+        if utime.ticks_diff(utime.ticks_ms(), start_time) > 15000:
+            distance = bot.read_distance()
+            # print("Distance = ", distance, "cm")
+            if distance < 30:
+                stop = True
+            elif distance >= 30:
+                stop = False
 
-    loop = asyncio.get_event_loop()
-    loop.create_task(collect_sensors())
-    loop.run_forever()
+        if stop:
+            bot.brake()
+        else:
+            if left == 0 and right == 0:
+                bot.fwd()
+            elif left == 1 and right == 0:
+                bot.turnleft()
+            elif left == 0 and right == 1:
+                bot.turnright()
+            elif left == 1 and right == 1:
+                bot.brake()
+        await asyncio.sleep_ms(100)
 
+# call main
 asyncio.run(main())
