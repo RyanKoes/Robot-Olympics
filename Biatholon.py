@@ -1,5 +1,7 @@
 import machine
 import time
+import uasyncio as asyncio
+import utime
 
 class bot:
     def __init__(self, **kwargs):
@@ -19,6 +21,9 @@ class bot:
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
         
         self.A = machine.Pin(kwargs["A"], machine.Pin.IN)
+        
+        self.trigPin = machine.Pin(kwargs["trigPin"], machine.Pin.OUT)
+        self.echoPin = machine.Pin(kwargs["echoPin"], machine.Pin.IN)
 
 
     def rotate(self, speed=0.3):
@@ -78,6 +83,16 @@ class bot:
 
     def read_line(self):
         return self.left.value(), self.right.value()
+    
+    def read_distance(self):
+        self.trigPin.low()
+        utime.sleep_us(2)
+        self.trigPin.high()
+        utime.sleep_us(5)
+        self.trigPin.low()
+        pulse = machine.time_pulse_us(self.echoPin, 1, 10000)
+        distance = 1 / 58.0 * pulse
+        return distance
 
 conf = {
     "M1A": 8,
@@ -87,27 +102,48 @@ conf = {
     "left": 3,
     "right": 2,
     "A": 20,
+    "trigPin": 27,
+    "echoPin": 26,
 }
 bot = bot(**conf)
 state = 0
 
-while True:
-    # if bot.A.value() == 0:
-    #     state = 1
-    # if state != 0:
-        left, right = bot.read_line()
+async def button_on_press():
+    while True:
+        if bot.A.value() == 0:
+            break
+        await asyncio.sleep_ms(100)
 
-        if left == 0 and right == 0:
-            bot.fwd()
-            last_turn = None  # Reset the last turn direction
-        elif left == 1 and right == 0:
-            if last_turn != 'right':  # Only turn left if the last turn was not right
-                bot.turnleft()
-                last_turn = 'left'
-        elif left == 0 and right == 1:
-            if last_turn != 'left':  # Only turn right if the last turn was not left
+async def main():
+    await button_on_press()
+    stop = False
+    while True:
+        left, right = bot.read_line()
+        distance = bot.read_distance()
+        
+        if distance < 10:
+            stop = True
+        elif distance >= 10:
+            stop = False
+            
+        if stop:
+            bot.brake()
+        else:
+            if left == 0 and right == 0:
+                bot.fwd()
+                last_turn = None  # Reset the last turn direction
+            elif left == 1 and right == 0:
+                if last_turn != 'right':  # Only turn left if the last turn was not right
+                    bot.turnleft()
+                    last_turn = 'left'
+            elif left == 0 and right == 1:
+                if last_turn != 'left':  # Only turn right if the last turn was not left
+                    bot.turnright()
+                    last_turn = 'right'
+            elif left == 1 and right == 1:
                 bot.turnright()
-                last_turn = 'right'
-        elif left == 1 and right == 1:
-            bot.turnright()
-            last_turn = None  # Reset the last turn direction
+                last_turn = None  # Reset the last turn direction
+        
+        await asyncio.sleep_ms(100)
+        
+asyncio.run(main())
