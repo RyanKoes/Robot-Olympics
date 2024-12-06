@@ -160,6 +160,7 @@ class bot:
 
         self.left = machine.Pin(kwargs["left"], machine.Pin.IN)
         self.right = machine.Pin(kwargs["right"], machine.Pin.IN)
+        self.A = machine.Pin(kwargs["A"], machine.Pin.IN)
 
 
     async def rotate_right(self, speed=0.3):
@@ -241,6 +242,7 @@ conf = {
     "M2B": 11,
     "left": 3,
     "right": 2,
+     "A": 20,
 }
 async def dance_mc():
     # Spin left and right for a duration of 5 seconds
@@ -361,14 +363,14 @@ async def dance_rickroll():
     await bot.fwd(speed=0.3)
     await asyncio.sleep(0.1)  # Move forward quickly for 2 beats
 
-
-   
+    # turn off the lights
+    set_color((0, 0, 0))
+    # turn music off 
+    bequiet()
+    # turn off the motors
     bot.brake()
-
-    # Ending Pose: Stop and flash LED (if any)
-    bot.brake()
-    print("Dance complete! Ending pose.")
-    # Optionally, flash an LED or play the last note as the ending.
+    # run an exception
+    raise  Exception("Rickrolled")
 
 
 # Initialize NeoPixel
@@ -413,5 +415,4 @@ async def main():
     await button_on_press()
     # await asyncio.gather(dance_mc(), play_mc())
     await asyncio.gather(dance_rickroll(), play_rickroll(), color_show())
-# Start the event loop for the async function
 asyncio.run(main())
