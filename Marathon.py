@@ -208,15 +208,15 @@ async def main():
         left, right = bot.read_line()
 
         if left == 0 and right == 0:
-            bot.fwd(.6)
+            bot.fwd(.7s)
         elif left == 1 and right == 0:
             bot.turnleft(.45)
         elif left == 0 and right == 1:
             bot.turnright(.45)
         elif left == 1 and right == 1:
-            bot.fwd(.6)
+            bot.fwd(.7)
         else:
-            bot.fwd(.6)
+            bot.fwd(.7)
 
         await asyncio.sleep_ms(1)
 
