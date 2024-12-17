@@ -1,4 +1,4 @@
-import machine
+import machine, neopixel
 import time
 import uasyncio as asyncio
 import utime
@@ -32,47 +32,33 @@ class bot:
         self.M2A.duty_u16(int(speed * 65535))
         self.M2B.duty_u16(0)
 
-    def turnleft(self, amount_u16 = 0x2000):
+    def turnleft(self, amount_u16 = 0x1000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
-        self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
-        self.M1B.duty_u16(self.M1B.duty_u16())
+        self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
+        self.M1B.duty_u16(int(1 * 65535)) #right wheel forward
+        self.M2A.duty_u16(0) #left wheel reverse int(0.5 * 65535)
+        self.M2B.duty_u16(int(0.85 * 65535))
 
-        if self.M2B.duty_u16() == 0:
-            # reverse
-            self.M2A.duty_u16(min(0xffff,self.M2A.duty_u16() + amount_u16))
-            self.M2B.duty_u16(0)
-        else:
-            # forward
-            self.M2A.duty_u16(self.M2A.duty_u16())
-            self.M2B.duty_u16(max(0,self.M2B.duty_u16() - amount_u16))
-
-    def turnright(self, amount_u16 = 0x2000):
+    def turnright(self, amount_u16 = 0x1000):
         # turn left by increasing the speed of the right motor and decreasing the speed of the left motor
         # assumes we are going forward.
 
-        if self.M1B.duty_u16() == 0:
-            # reverse
-            self.M1A.duty_u16(min(0xffff,self.M1A.duty_u16() + amount_u16))
-            self.M1B.duty_u16(0)
-        else:
-            # forward
-            self.M1A.duty_u16(self.M1A.duty_u16())     # Duty Cycle must be between 0 until 65535
-            self.M1B.duty_u16(max(0,self.M1B.duty_u16() - amount_u16))
+        self.M1A.duty_u16(0)     # int(0.5 * 65535)
+        self.M1B.duty_u16(int(0.85 * 65535))
+        self.M2A.duty_u16(0)
+        self.M2B.duty_u16(int(1 * 65535))
 
-        self.M2A.duty_u16(self.M2A.duty_u16())
-        self.M2B.duty_u16(self.M2B.duty_u16())
-
-    def fwd(self, speed=0.6):
+    def fwd(self, speed=1):
         self.M1A.duty_u16(0)     # Duty Cycle must be between 0 and 65535
         self.M1B.duty_u16(int(speed * 65535))
         self.M2A.duty_u16(0)
-        self.M2B.duty_u16(int(speed * 65535))
+        self.M2B.duty_u16(int(speed * 65535)-5000)
 
     def reverse(self, speed=0.3):
         self.M1A.duty_u16(int(speed * 65535))
         self.M1B.duty_u16(0)     # Duty Cycle must be between 0 and 65535
-        self.M2A.duty_u16(int(speed * 65535))
+        self.M2A.duty_u16(int(speed * 65535)-7000)
         self.M2B.duty_u16(0)
 
     def brake(self):
@@ -106,6 +92,7 @@ conf = {
     "echoPin": 26,
 }
 bot = bot(**conf)
+np = neopixel.NeoPixel(machine.Pin(18), 2)
 
 async def button_on_press():
     while True:
@@ -120,23 +107,32 @@ async def main():
         left, right = bot.read_line()
         distance = bot.read_distance()
         
-        if distance < 10:
+        if distance < 20 and distance > 0:
             stop = True
-        elif distance >= 10:
+        elif distance >= 20 or distance < 0:
             stop = False
+
             
         if stop:
             bot.brake()
+            np[0] = (255, 0, 0)
+            np[1] = (255, 0, 0)
         else:
             if left == 0 and right == 0:
                 bot.fwd()
+                np[0] = (0, 0, 255)
+                np[1] = (0, 0, 255)
             elif left == 1 and right == 0:
                 bot.turnleft()
             elif left == 0 and right == 1:
                     bot.turnright()
             elif left == 1 and right == 1:
-                bot.brake()
+                np[0] = (0, 0, 255)
+                np[1] = (0, 0, 255)
+                bot.fwd()
             
-        await asyncio.sleep_ms(10)
+        await asyncio.sleep_ms(60)
+
+        np.write()
         
 asyncio.run(main())

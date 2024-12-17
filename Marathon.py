@@ -208,7 +208,7 @@ async def main():
         left, right = bot.read_line()
 
         if left == 0 and right == 0:
-            bot.fwd(.7s)
+            bot.fwd(.7)
         elif left == 1 and right == 0:
             bot.turnleft(.45)
         elif left == 0 and right == 1:
